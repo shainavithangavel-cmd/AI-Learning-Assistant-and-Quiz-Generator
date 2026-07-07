@@ -318,6 +318,3 @@ Quiz publish state: `published_at IS NULL` = draft, `published_at IS NOT NULL` =
 
 ---
 
-## 🤝 Built By
-
-This is an intern/training project MVP. Code is intentionally kept simple and readable.

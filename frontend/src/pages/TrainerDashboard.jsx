@@ -24,6 +24,9 @@ export default function TrainerDashboard() {
 
   const published = quizzes.filter((q) => q.published_at).length;
   const draft = quizzes.filter((q) => !q.published_at).length;
+  const recentQuizzes = [...quizzes]
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+    .slice(0, 5);
 
   return (
     <Box className="page-container">
@@ -76,7 +79,7 @@ export default function TrainerDashboard() {
             View All
           </Button>
         </Box>
-        {quizzes.slice(0, 5).map((q) => (
+        {recentQuizzes.map((q) => (
           <Box
             key={q.id}
             sx={{
@@ -100,7 +103,7 @@ export default function TrainerDashboard() {
             </Box>
           </Box>
         ))}
-        {quizzes.length === 0 && (
+        {recentQuizzes.length === 0 && (
           <Typography sx={{ color: '#94a3b8', textAlign: 'center', py: 3, fontSize: 14 }}>
             No quizzes yet. Create your first quiz!
           </Typography>

@@ -1,43 +1,33 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session #db session type
-from typing import List #return list of topics
-from app.database import get_db #give db connection
-from app.models import Topic, User, UserRole
-from app.schemas import CreateTopicRequest, UpdateTopicRequest, TopicResponse #datas needed to create topic,update topic,and response model for the topic
-from app.auth import require_role, get_current_user #for authentication and role checking
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from typing import List
+from app.database import get_db
+from app.models import User, UserRole
+from app.schemas import CreateTopicRequest, UpdateTopicRequest, TopicResponse
+from app.auth import require_role, get_current_user
+from app.services.topic_service import create_topic as create_topic_service
+from app.services.topic_service import delete_topic as delete_topic_service
+from app.services.topic_service import get_topics as get_topics_service
+from app.services.topic_service import update_topic as update_topic_service
 
-router = APIRouter(prefix="/topics", tags=["Topics"]) # all apis will start with prefix /topics
+router = APIRouter(prefix="/topics", tags=["Topics"])
 
 
 @router.get("", response_model=List[TopicResponse])
-def get_topics( 
+def get_topics(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user) # getting current logged in user .any logged in user can access this api.
+    current_user: User = Depends(get_current_user),
 ):
-    # Trainers see only their topics, admins see all
-    if current_user.role.role_name == UserRole.ADMIN:
-        topics = db.query(Topic).all()
-    else:
-        topics = db.query(Topic).filter(Topic.created_by == current_user.id).all()
-    return topics
+    return get_topics_service(db, current_user)
 
 
 @router.post("", response_model=TopicResponse, status_code=201)
 def create_topic(
     request: CreateTopicRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.TRAINER))
+    current_user: User = Depends(require_role(UserRole.TRAINER)),
 ):
-    # frontend send this as api request body,backend wil receive this i. res object and save it in db.
-    topic = Topic(
-        title=request.title,
-        description=request.description,   
-        created_by=current_user.id
-    )
-    db.add(topic) #insert new topics 
-    db.commit() # save the topics in db
-    db.refresh(topic) #reload the generated values
-    return topic #send the json response of topic created
+    return create_topic_service(db, request, current_user)
 
 
 @router.put("/{topic_id}", response_model=TopicResponse)
@@ -45,31 +35,16 @@ def update_topic(
     topic_id: int,
     request: UpdateTopicRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.TRAINER))
+    current_user: User = Depends(require_role(UserRole.TRAINER)),
 ):
-    topic = db.query(Topic).filter(Topic.id == topic_id).first()
-    if not topic:
-        raise HTTPException(status_code=404, detail="Topic not found")
-
-    if request.title is not None:
-        topic.title = request.title
-    if request.description is not None:
-        topic.description = request.description
-
-    db.commit()
-    db.refresh(topic)
-    return topic
+    return update_topic_service(db, topic_id, request)
 
 
 @router.delete("/{topic_id}", status_code=204)
 def delete_topic(
     topic_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.TRAINER))
+    current_user: User = Depends(require_role(UserRole.TRAINER)),
 ):
-    topic = db.query(Topic).filter(Topic.id == topic_id).first()
-    if not topic:
-        raise HTTPException(status_code=404, detail="Topic not found")
-
-    db.delete(topic)
-    db.commit()
+    delete_topic_service(db, topic_id)
+    return None
